@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ErrDuplicateEmail = errors.New("email already in use")
+var AnonymousUser = &User{}
 
 type UserModel struct {
 	DB *sql.DB
@@ -30,6 +30,10 @@ type User struct {
 type password struct {
 	plaintext *string
 	hash      []byte
+}
+
+func (u *User) isAnonymous() bool {
+	return u == AnonymousUser
 }
 
 func (m *UserModel) Insert(user *User) error {
