@@ -11,6 +11,8 @@ import (
 	"github.com/yaredow/greenlight/internal/validator"
 )
 
+const ScopeActivation = "activation"
+
 type TokenModel struct {
 	DB *sql.DB
 }
