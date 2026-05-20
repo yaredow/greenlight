@@ -63,5 +63,6 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 	err = app.writeJSON(w, http.StatusCreated, envelope{"authentication_token": token}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
+		return
 	}
 }
