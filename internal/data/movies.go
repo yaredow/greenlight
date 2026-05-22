@@ -55,7 +55,15 @@ func (m *MovieModel) Get(id int64) (*Movie, error) {
 	defer cancel()
 
 	var movie Movie
-	err := m.DB.QueryRowContext(ctx, query, id).Scan(&[]byte{}, &movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year, &movie.Runtime, pq.Array(&movie.Genres), &movie.Version)
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(
+		&movie.ID,
+		&movie.CreatedAt,
+		&movie.Title,
+		&movie.Year,
+		&movie.Runtime,
+		pq.Array(&movie.Genres),
+		&movie.Version,
+	)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
