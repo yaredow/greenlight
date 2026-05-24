@@ -4,13 +4,13 @@ import (
 	"errors"
 	"expvar"
 	"fmt"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/tomasen/realip"
 	"github.com/yaredow/greenlight/internal/data"
 	"github.com/yaredow/greenlight/internal/validator"
 	"golang.org/x/time/rate"
@@ -29,17 +29,26 @@ func newMetricsResponseWritter(w http.ResponseWriter) *metricsResponseWriter {
 	}
 }
 
-func (mw *metricsResponseWriter) write(b []byte) (int, error) {
-	mw.headerWritten = true
-	return mw.wrapped.Write(b)
-}
-
-func (mw *metricsResponseWriter) unwrap() http.ResponseWriter {
-	return mw.wrapped
-}
-
 func (mw *metricsResponseWriter) Header() http.Header {
 	return mw.wrapped.Header()
+}
+
+func (mw *metricsResponseWriter) WriteHeader(statusCode int) {
+	mw.wrapped.WriteHeader(statusCode)
+
+	if !mw.headerWritten {
+		mw.statusCode = statusCode
+		mw.headerWritten = true
+	}
+}
+
+func (mw *metricsResponseWriter) Write(b []byte) (int, error) {
+	if !mw.headerWritten {
+		mw.statusCode = http.StatusOK
+		mw.headerWritten = true
+	}
+
+	return mw.wrapped.Write(b)
 }
 
 func (app *application) enableCORS(next http.Handler) http.Handler {
@@ -92,11 +101,7 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if app.config.limiter.enabled {
-			ip, _, err := net.SplitHostPort(r.RemoteAddr)
-			if err != nil {
-				app.serverErrorResponse(w, r, err)
-				return
-			}
+			ip := realip.FromRequest(r)
 
 			mu.Lock()
 
@@ -228,7 +233,7 @@ func (app *application) metrics(next http.Handler) http.Handler {
 
 		mw := newMetricsResponseWritter(w)
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(mw, r)
 
 		totalResponsesSent.Add(1)
 
