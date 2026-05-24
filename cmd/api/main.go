@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"expvar"
 	"flag"
 	"log/slog"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
@@ -48,6 +50,11 @@ type application struct {
 }
 
 func main() {
+	expvar.NewString("version").Set(version)
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
+
 	var cfg config
 
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
@@ -77,6 +84,10 @@ func main() {
 	}
 
 	defer db.Close()
+
+	expvar.Publish("database", expvar.Func(func() any {
+		return db.Stats()
+	}))
 
 	// declare an instance of the application struct
 	app := &application{
