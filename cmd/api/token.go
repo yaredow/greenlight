@@ -66,3 +66,6 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 		return
 	}
 }
+
+func (app *application) createPasswordResetTokenHandler(w http.ResponseWriter, r *http.Request) {
+}

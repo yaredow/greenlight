@@ -132,3 +132,6 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) updateUserPasswordHandler(w http.ResponseWriter, r *http.Request) {
+}
