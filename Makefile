@@ -52,6 +52,18 @@ db/migration/up: confirm
 	@echo "Running up migrations..."
 	migrate -path ./migrations -database ${GREENLIGHT_DB_DSN} up
 
+
+# ==================================================================================== #
+# PRODUCTION
+# ==================================================================================== #
+production_host_ip = "192.168.122.112"
+
+## production: run the production version of the application
+.PHONY: production
+production/connect:
+	ssh greenlight@${production_host_ip}
+
+
 # ==================================================================================== #
 # QUALITY CONTROL
 # ==================================================================================== #
