@@ -14,8 +14,6 @@ help:
 confirm:
 	@echo "Are you sure? [y/N]" && read ans && [ $${ans: -N} = y ]
 
-
-
 # ==================================================================================== #
 # BUILD
 # ==================================================================================== #
@@ -63,6 +61,21 @@ production_host_ip = "192.168.122.112"
 production/connect:
 	ssh greenlight@${production_host_ip}
 
+## production/deploy/api: deploy the api to production
+.PHONY: production/deploy/api
+production/deploy/api:
+	rsync -P ./bin/linux_amd64/api greenlight@${production_host_ip}:~
+	rsync -rP --delete ./migrations greenlight@${production_host_ip}:~
+	rsync -P ./remote/production/api.service greenlight@${production_host_ip}:~
+	rsync -P ./remote/production/Caddyfile greenlight@${production_host_ip}:~
+	ssh -t greenlight@${production_host_ip} '\
+		migrate -path ~/migrations -database $$GREENLIGHT_DB_DSN up && \
+		sudo mv ~/api.service /etc/systemd/system/ && \
+		sudo systemctl enable api && \
+		sudo systemctl restart api && \
+		sudo mv ~/Caddyfile /etc/caddy/ && \
+		sudo systemctl restart caddy \
+	'
 
 # ==================================================================================== #
 # QUALITY CONTROL
