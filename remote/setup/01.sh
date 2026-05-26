@@ -32,8 +32,12 @@ useradd --create-home --shell /bin/bash --groups sudo "$USERNAME"
 passwd --delete "$USERNAME"
 chage --lastday 0 "$USERNAME"
 
-# Copy the SSH key from the root user to the new user
-rsync --archive --chown="$USERNAME:$USERNAME" ~/.ssh /home/"$USERNAME"
+# Copy the SSH key from the current user to the new user.
+if [ -n "${SUDO_USER:-}" ]; then
+    rsync --archive --chown="$USERNAME:$USERNAME" "/home/$SUDO_USER/.ssh" /home/"$USERNAME"
+else
+    rsync --archive --chown="$USERNAME:$USERNAME" ~/.ssh /home/"$USERNAME"
+fi
 
 # configure the firewall
 ufw allow 22
@@ -48,17 +52,25 @@ apt --yes install fail2ban
 curl -L https://github.com/golang-migrate/migrate/releases/download/v4.14.1/migrate.linux-amd64.tar.gz | tar xvz
 mv migrate.linux-amd64 /usr/local/bin/migrate
 
-# Install PostgreSQL.
-apt --yes install postgresql
+# Install Docker Engine + the Docker Compose plugin.
+apt --yes install ca-certificates curl gnupg
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
 
-# Set up the greenlight DB and create a user account with the password entered earlier.
-sudo -i -u postgres psql -c "CREATE DATABASE greenlight"
-sudo -i -u postgres psql -d greenlight -c "CREATE EXTENSION IF NOT EXISTS citext"
-sudo -i -u postgres psql -d greenlight -c "CREATE ROLE greenlight WITH LOGIN PASSWORD '${DB_PASSWORD}'"
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+apt update
+apt --yes install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+systemctl enable --now docker
 
-# Add a DSN for connecting to the greenlight database to the system-wide environment
-# variables in the /etc/environment file.
-echo "GREENLIGHT_DB_DSN=postgres://greenlight:${DB_PASSWORD}@localhost/greenlight" >> /etc/environment
+# Allow the application user to run docker without sudo.
+usermod -aG docker "$USERNAME"
+
+# Note: appending is simple but not idempotent; re-running the script will duplicate lines.
+echo "DB_USER=greenlight" >> /etc/environment
+echo "DB_NAME=greenlight" >> /etc/environment
+echo "DB_PASSWORD=${DB_PASSWORD}" >> /etc/environment
+echo "GREENLIGHT_DB_DSN=postgres://greenlight:${DB_PASSWORD}@localhost:5432/greenlight" >> /etc/environment
 
 # Install Caddy (see https://caddyserver.com/docs/install#debian-ubuntu-raspbian).
 apt install -y debian-keyring debian-archive-keyring apt-transport-https

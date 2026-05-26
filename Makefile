@@ -1,4 +1,5 @@
-include .envrc
+include .env
+export
 
 # ==================================================================================== #
 # HELPERS
@@ -18,6 +19,7 @@ confirm:
 # BUILD
 # ==================================================================================== #
 
+## build/api: build the api binary
 .PHONY: build/api
 build/api:
 	@echo "Building cmd/api..."
@@ -25,13 +27,36 @@ build/api:
 	GOOS=linux GOARCH=amd64 go build -ldflags='-s' -o=./bin/linux_amd64/api ./cmd/api
 
 # ==================================================================================== #
+# DOCKER
+# ==================================================================================== #
+
+## docker/up: start the docker-compose services
+.PHONY: docker/up
+docker/up:
+	docker compose up -d
+
+## docker/down: stop the docker-compose services
+.PHONY: docker/down
+docker/down:
+	docker compose down
+
+## docker/db/shell: open a psql shell inside the docker container
+.PHONY: docker/db/shell
+docker/db/shell:
+	docker compose exec db psql -U ${DB_USER} -d ${DB_NAME}
+
+# ==================================================================================== #
 # DEVELOPMENT
 # ==================================================================================== #
 
-## run/api: run the cmd/api application
+## run/api: run the cmd/api application with live reloading
 .PHONY: run/api
-run/api:
-	go run cmd/api/*
+run/api: docker/up
+	@if ! command -v air > /dev/null; then \
+		echo "Installing Air..."; \
+		go install github.com/air-verse/air@latest; \
+	fi
+	air
 
 ## db/psql: connect to the database using psql
 .PHONY: db/psql
@@ -66,11 +91,20 @@ production/connect:
 production/deploy/api:
 	rsync -P ./bin/linux_amd64/api greenlight@${production_host_ip}:~
 	rsync -rP --delete ./migrations greenlight@${production_host_ip}:~
+	rsync -P ./remote/production/docker-compose.yaml greenlight@${production_host_ip}:~/docker-compose.yaml
 	rsync -P ./remote/production/api.service greenlight@${production_host_ip}:~
 	rsync -P ./remote/production/Caddyfile greenlight@${production_host_ip}:~
 	ssh -t greenlight@${production_host_ip} '\
+		set -eu && \
+		. /etc/environment && \
+		docker compose -f ~/docker-compose.yaml up -d && \
+		for i in 1 2 3 4 5 6 7 8 9 10; do \
+			docker compose -f ~/docker-compose.yaml exec -T db pg_isready -U "$$DB_USER" -d "$$DB_NAME" && break; \
+			sleep 1; \
+		done && \
 		migrate -path ~/migrations -database $$GREENLIGHT_DB_DSN up && \
 		sudo mv ~/api.service /etc/systemd/system/ && \
+		sudo systemctl daemon-reload && \
 		sudo systemctl enable api && \
 		sudo systemctl restart api && \
 		sudo mv ~/Caddyfile /etc/caddy/ && \
