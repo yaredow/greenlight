@@ -29,15 +29,7 @@ apt --yes install locales-all
 useradd --create-home --shell /bin/bash --groups sudo "$USERNAME"
 
 # force a password to be set for the new user the first time they log in
-passwd --delete "$USERNAME"
-chage --lastday 0 "$USERNAME"
-
-# Copy the SSH key from the current user to the new user.
-if [ -n "${SUDO_USER:-}" ]; then
-    rsync --archive --chown="$USERNAME:$USERNAME" "/home/$SUDO_USER/.ssh" /home/"$USERNAME"
-else
-    rsync --archive --chown="$USERNAME:$USERNAME" ~/.ssh /home/"$USERNAME"
-fi
+passwd "$USERNAME"
 
 # configure the firewall
 ufw allow 22
@@ -63,14 +55,17 @@ apt update
 apt --yes install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 systemctl enable --now docker
 
-# Allow the application user to run docker without sudo.
+# Ensure group exists
+getent group docker >/dev/null || groupadd docker
+
+# Add user to docker group
 usermod -aG docker "$USERNAME"
 
 # Note: appending is simple but not idempotent; re-running the script will duplicate lines.
 echo "DB_USER=greenlight" >> /etc/environment
 echo "DB_NAME=greenlight" >> /etc/environment
 echo "DB_PASSWORD=${DB_PASSWORD}" >> /etc/environment
-echo "GREENLIGHT_DB_DSN=postgres://greenlight:${DB_PASSWORD}@localhost:5432/greenlight" >> /etc/environment
+echo "GREENLIGHT_DB_DSN=postgres://greenlight:${DB_PASSWORD}@localhost:5432/greenlight?sslmode=disable" >> /etc/environment
 
 # Install Caddy (see https://caddyserver.com/docs/install#debian-ubuntu-raspbian).
 apt install -y debian-keyring debian-archive-keyring apt-transport-https
