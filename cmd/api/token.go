@@ -68,4 +68,62 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 }
 
 func (app *application) createPasswordResetTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Email string `json:"email"`
+	}
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	v := validator.New()
+
+	if data.ValidateEmail(v, input.Email); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	user, err := app.models.Users.GetByEmail(input.Email)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.invalidCredentialsResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	if !user.Activated {
+		v.AddError("email", "user account is not activated")
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	token, err := app.models.Tokens.New(user.ID, 24*time.Hour, data.ScopePasswordReset)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// email the token to the user
+	app.background(func() {
+		data := map[string]any{
+			"passwordResetToken": token.PlainText,
+		}
+
+		err = app.mailer.Send(user.Email, "token_password_reset.html", data)
+		if err != nil {
+			app.logger.Error(err.Error())
+		}
+	})
+
+	env := envelope{"message": "an email will be sent to you containing a password reset instructions"}
+
+	err = app.writeJSON(w, http.StatusAccepted, env, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }
