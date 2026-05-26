@@ -5,7 +5,7 @@ export
 # HELPERS
 # ==================================================================================== #
 
-## help: print this help message
+## help: show available make targets
 .PHONY: help
 help:
 	@echo "Usage:"
@@ -19,7 +19,7 @@ confirm:
 # BUILD
 # ==================================================================================== #
 
-## build/api: build the api binary
+## build/api: build API binaries for local and linux/amd64
 .PHONY: build/api
 build/api:
 	@echo "Building cmd/api..."
@@ -30,17 +30,17 @@ build/api:
 # DOCKER
 # ==================================================================================== #
 
-## docker/up: start the docker-compose services
+## docker/up: start Docker services in detached mode
 .PHONY: docker/up
 docker/up:
 	docker compose up -d
 
-## docker/down: stop the docker-compose services
+## docker/down: stop and remove Docker services
 .PHONY: docker/down
 docker/down:
 	docker compose down
 
-## docker/db/shell: open a psql shell inside the docker container
+## docker/db/shell: open a psql shell in the db container
 .PHONY: docker/db/shell
 docker/db/shell:
 	docker compose exec db psql -U ${DB_USER} -d ${DB_NAME}
@@ -49,7 +49,7 @@ docker/db/shell:
 # DEVELOPMENT
 # ==================================================================================== #
 
-## run/api: run the cmd/api application with live reloading
+## run/api: run API with live reload (installs air if missing)
 .PHONY: run/api
 run/api: docker/up
 	@if ! command -v air > /dev/null; then \
@@ -58,18 +58,18 @@ run/api: docker/up
 	fi
 	air
 
-## db/psql: connect to the database using psql
+## db/psql: connect to the database with psql
 .PHONY: db/psql
 db/psql:
 	psql ${GREENLIGHT_DB_DSN}
 
-## db/migration/new: create a new migration file
+## db/migration/new: create a new SQL migration file
 .PHONY: db/migration/new
 db/migration/new:
 	@echo "Creating a migration file for ${name}"
 	migrate create -seq -ext=.sql -dir=./migrations ${name}
 
-## db/migration/up: run all up migrations
+## db/migration/up: apply all pending up migrations
 .PHONY: db/migration/up
 db/migration/up: confirm
 	@echo "Running up migrations..."
@@ -81,12 +81,12 @@ db/migration/up: confirm
 # ==================================================================================== #
 production_host_ip = "192.168.122.112"
 
-## production: run the production version of the application
+## production/connect: open an SSH session to the production server
 .PHONY: production
 production/connect:
 	ssh greenlight@${production_host_ip}
 
-## production/deploy/api: deploy the api to production
+## production/deploy/api: deploy API binary, migrations, and config to production
 .PHONY: production/deploy/api
 production/deploy/api:
 	rsync -P ./bin/linux_amd64/api greenlight@${production_host_ip}:~
@@ -96,8 +96,8 @@ production/deploy/api:
 	rsync -P ./remote/production/Caddyfile greenlight@${production_host_ip}:~
 	ssh -t greenlight@${production_host_ip} '\
 		set -eu && \
-		. /etc/environment && \
 		docker compose -f ~/docker-compose.yaml up -d && \
+		. /etc/environment && \
 		for i in 1 2 3 4 5 6 7 8 9 10; do \
 			docker compose -f ~/docker-compose.yaml exec -T db pg_isready -U "$$DB_USER" -d "$$DB_NAME" && break; \
 			sleep 1; \
@@ -115,7 +115,7 @@ production/deploy/api:
 # QUALITY CONTROL
 # ==================================================================================== #
 
-## tidy: format all .go files and tidy module dependencies
+## tidy: format code and tidy/verify Go modules
 .PHONY: tidy
 tidy:
 	@echo 'Formatting .go files...'
@@ -125,7 +125,7 @@ tidy:
 	go mod verify
 	go mod vendor
 
-## audit: run quality control checks
+## audit: run dependency, lint, and test checks
 .PHONY: audit
 audit:
 	@echo 'Checking module dependencies...'

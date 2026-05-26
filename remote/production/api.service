@@ -1,31 +1,28 @@
 [Unit]
-# Description is a human-readable name for the service.
+# Display name shown by systemd tools.
 Description=Greenlight API service
-# Wait until Docker is running and the network is "up" before starting the service.
-# PostgreSQL runs in Docker (via docker compose), not as a systemd postgresql.service.
+# Start only after Docker and network are ready.
+# PostgreSQL runs in Docker (compose), not as a systemd postgres service.
 After=docker.service
 After=network-online.target
 Wants=network-online.target
 Requires=docker.service
-# Configure service start rate limiting. If the service is (re)started more than 5 times
-# in 600 seconds then don't permit it to start anymore.
+# Stop restart attempts after 5 failures within 10 minutes.
 StartLimitIntervalSec=600
 StartLimitBurst=5
 [Service]
-# Execute the API binary as the greenlight user, loading the environment variables from
-# /etc/environment and using the working directory /home/greenlight.
+# Run the API as user/group greenlight.
+# Load environment from /etc/environment and run from /home/greenlight.
 Type=exec
 User=greenlight
 Group=greenlight
 EnvironmentFile=/etc/environment
 WorkingDirectory=/home/greenlight
 ExecStart=/home/greenlight/api -port=4000 -db-dsn=${GREENLIGHT_DB_DSN} -env=production
-# Automatically restart the service after a 5-second wait if it exits with a non-zero
-# exit code. If it restarts more than 5 times in 600 seconds, then the rate limit we
-# configured above will be hit and it won't be restarted anymore.
+# Restart on failure, waiting 5 seconds between retries.
+# Rate limiting above controls max restart attempts.
 Restart=on-failure
 RestartSec=5
 [Install]
-# Start the service automatically at boot time (the 'multi-user.target' describes a boot
-# state when the system will accept logins).
+# Start automatically when the system reaches multi-user mode.
 WantedBy=multi-user.target
