@@ -54,7 +54,7 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 		return
 	}
 
-	token, err := app.models.Tokens.New(user.ID, 24*time.Hour, data.ScopeAuthentication)
+	token, err := app.generateJWT(user.ID)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return

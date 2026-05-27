@@ -1,12 +1,11 @@
 #:schema https://json.schemastore.org/any.json
-
 env_files = [".env"]
 root = "."
 testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = []
+  args_bin = ["-jwt-secret", "${JWT_SECRET}"]
    bin = "./tmp/api"
    cmd = "go build -o ./tmp/api ./cmd/api"
    entrypoint = ["./tmp/api"]

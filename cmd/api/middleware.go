@@ -12,7 +12,6 @@ import (
 
 	"github.com/tomasen/realip"
 	"github.com/yaredow/greenlight/internal/data"
-	"github.com/yaredow/greenlight/internal/validator"
 	"golang.org/x/time/rate"
 )
 
@@ -146,14 +145,17 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 
 		token := headerParts[1]
 
-		v := validator.New()
-
-		if data.ValidateToken(v, token); !v.Valid() {
-			app.invalidAuthenticationTokenResponse(w, r)
+		userID, err := app.validateJWT(token)
+		if err != nil {
+			if errors.Is(err, ErrInvalidJWTToken) {
+				app.invalidAuthenticationTokenResponse(w, r)
+			} else {
+				app.serverErrorResponse(w, r, err)
+			}
 			return
 		}
 
-		user, err := app.models.Users.GetForToken(data.ScopeAuthentication, token)
+		user, err := app.models.Users.Get(userID)
 		if err != nil {
 			switch {
 			case errors.Is(err, data.ErrRecordNotFound):
