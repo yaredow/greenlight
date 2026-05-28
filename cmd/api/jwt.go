@@ -16,7 +16,7 @@ type authToken struct {
 var ErrInvalidJWTToken = errors.New("invalid jwt token")
 
 func (app *application) generateJWT(userID int64) (*authToken, error) {
-	expiry := time.Now().Add(24 * time.Hour)
+	expiry := time.Now().Add(10 * time.Minute)
 
 	claims := jwt.RegisteredClaims{
 		Subject:   strconv.FormatInt(userID, 10),

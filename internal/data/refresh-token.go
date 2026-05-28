@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/yaredow/greenlight/internal/validator"
 )
 
 type RefreshTokenModel struct {
@@ -50,8 +51,6 @@ func generateRefreshToken(userID int64, ttl time.Duration, familyID string) (*Re
 
 	return token, nil
 }
-
-// new, get by tokenpaintext, rotate, revoke(by hash and familyID)
 
 func (m RefreshTokenModel) Insert(token *RefreshToken) error {
 	query := `
@@ -109,6 +108,11 @@ func (m RefreshTokenModel) GetByPlainText(tokenPlainText string) (*RefreshToken,
 	token.PlainText = tokenPlainText
 
 	return &token, nil
+}
+
+func ValidateRefreshToken(v *validator.Validator, tokenPlainText string) {
+	v.Check(tokenPlainText != "", "refresh_token", "must be provided")
+	v.Check(len(tokenPlainText) == 52, "refresh_token", "must be 52 bytes long")
 }
 
 func (m RefreshTokenModel) New(userID int64, ttl time.Duration) (*RefreshToken, error) {

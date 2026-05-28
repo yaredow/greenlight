@@ -30,6 +30,8 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.createAuthenticationTokenHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/password-reset", app.createPasswordResetTokenHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/activation", app.createActivationTokenHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/tokens/refresh", app.refreshTokenHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/tokens/revoke", app.revokeRefreshTokenHandler)
 
 	// Metrics
 	router.Handler(http.MethodGet, "/debug/var", expvar.Handler())
