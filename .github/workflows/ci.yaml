@@ -12,15 +12,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    env:
-      GREENLIGHT_DB_DSN: ${{ secrets.GREENLIGHT_DB_DSN }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      SMTP_HOST: ${{ vars.SMTP_HOST }}
-      SMTP_PORT: ${{ vars.SMTP_PORT }}
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      SMTP_SENDER: ${{ vars.SMTP_SENDER }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
