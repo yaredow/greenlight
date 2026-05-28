@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      GREENLIGHT_DB_DSN: ${{ secrets.GREENLIGHT_DB_DSN }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      SMTP_HOST: ${{ vars.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_SENDER: ${{ vars.SMTP_SENDER }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Install tools
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Audit
+        run: make audit
+
+      - name: Build
+        run: make build/api
