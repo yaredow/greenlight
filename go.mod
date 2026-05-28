@@ -9,6 +9,7 @@ require github.com/lib/pq v1.12.3
 require (
 	github.com/go-mail/mail/v2 v2.3.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/uuid v1.6.0
 	github.com/tomasen/realip v0.0.0-20180522021738-f0c99a92ddce
 	golang.org/x/crypto v0.51.0
 	golang.org/x/time v0.15.0
