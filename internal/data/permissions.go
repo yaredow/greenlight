@@ -3,20 +3,40 @@ package data
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"slices"
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/yaredow/greenlight/internal/validator"
 )
 
+type PermissionModel struct {
+	DB *sql.DB
+}
+
 type Permissions []string
+
+var (
+	PermissionMoviesRead  = "movies:read"
+	PermissionMoviesWrite = "movies:write"
+)
+
+var SupportedPermissions = Permissions{
+	PermissionMoviesRead,
+	PermissionMoviesWrite,
+}
 
 func (p Permissions) Include(code string) bool {
 	return slices.Contains(p, code)
 }
 
-type PermissionModel struct {
-	DB *sql.DB
+func ValidatePermissions(v *validator.Validator, permissions Permissions) {
+	v.Check(len(permissions) > 0, "permissions", "must contain at least one permission")
+
+	for _, p := range permissions {
+		v.Check(slices.Contains(SupportedPermissions, p), "permissions", fmt.Sprintf("invalid permission: %s", p))
+	}
 }
 
 func (m *PermissionModel) GetAllForUser(userID int64) (Permissions, error) {

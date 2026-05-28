@@ -23,8 +23,9 @@ func (app *application) routes() http.Handler {
 
 	// User routes
 	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
-	router.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUserHandler)
-	router.HandlerFunc(http.MethodPut, "/v1/users/password", app.updateUserPasswordHandler)
+	router.HandlerFunc(http.MethodPut, "/v1/account/activated", app.activateUserHandler)
+	router.HandlerFunc(http.MethodPut, "/v1/accounts/password", app.updateUserPasswordHandler)
+	router.HandlerFunc(http.MethodPut, "/v1/users/:id/permissions", app.addPermissionsHandler)
 
 	// Auth route
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.createAuthenticationTokenHandler)
